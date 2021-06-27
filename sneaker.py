@@ -259,7 +259,7 @@ def get_category_data(shoe_category,driver):
         link_to_shoe_category = skip_page
         first_category = False
 
-    #link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=5"
+    link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=8"
 
     category_directory = link_to_shoe_category[19:(link_to_shoe_category.find('?'))]
 
@@ -278,7 +278,6 @@ def get_category_data(shoe_category,driver):
         page_num = 1
 
     page_url = link_to_shoe_category
-
     # get all data on the page, if there is a next page get the info on that page too
     while True:
         # open link to category in new tab

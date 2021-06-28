@@ -259,7 +259,7 @@ def get_category_data(shoe_category,driver):
         link_to_shoe_category = skip_page
         first_category = False
 
-    link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=8"
+    link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=9"
 
     category_directory = link_to_shoe_category[19:(link_to_shoe_category.find('?'))]
 
@@ -289,13 +289,13 @@ def get_category_data(shoe_category,driver):
         # check if the right arrow refers to stockx home page because for some 
         # reason that's what the right arrow does if there isn't a next page
         right_arrows = driver.find_elements_by_xpath(
-        	"//ul[contains(@class,'ButtonList')]/a[contains(@class,'NavigationButton')]")
+        	"//ul[contains(@class,'ButtonList')]/a[contains(@class,'enih0gt1')]")
         #print(right_arrows)
 
         page_url = right_arrows[1].get_attribute('href')
         if (page_url == 'https://stockx.com/') or BREAKS:
-            pass
-            #break
+            # pass
+            break
 
         # before going to next page, close the current page
         driver.close()

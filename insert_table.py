@@ -12,11 +12,11 @@ def isnan(value):
     except:
         return False
         
-def post_all_sneakers():
+def post_all_sneakers(brandname):
     df = pd.read_csv('./data/sneakers/adidas/yeezy/output.csv')
     for index, row in df.iterrows():
         url = row['url']
-        brandname = 'Yeezy'
+        brandname = brandname
         stylename = row['name']
         imagepath = row['image_path']
 
@@ -57,7 +57,7 @@ def post_all_sneakers():
     print(len(df))
 
 def main():
-    post_all_sneakers()
+    post_all_sneakers('Yeezy')
 
 if __name__ == '__main__':
     main()

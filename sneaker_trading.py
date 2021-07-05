@@ -90,14 +90,11 @@ Gathers desired information about the sneaker at the given url.
     basketball shoes sell better if they use blue.
 
 """
-def get_shoe_data(url, driver, directory,page_wait=PAGE_WAIT,complex_image_path=True):
+def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
     output = {}
 
     # open link to shoe
     open_link(driver,url,page_wait=page_wait)
-
-    # store url in dictionary
-    output.update({'url' : url})
 
     try:
         # save name of sneaker
@@ -107,104 +104,24 @@ def get_shoe_data(url, driver, directory,page_wait=PAGE_WAIT,complex_image_path=
         # save ticker code
         ticker = {'ticker' : driver.find_element_by_css_selector('.soft-black').text}
         output.update(ticker)
-
-        # save image of the shoe and store the path to it
-        # make path just to directory that will contain the image to see if it needs to be made
-        if complex_image_path:
-            image_path = directory[:6] + "/images" + directory[6:]
-        else:
-            image_path = directory
-
-        if (not os.path.isdir(image_path)):
-            # create the desired directory if it doesn't exist
-            os.makedirs(image_path, exist_ok=True)
-
-        # add the filename
-        image_path = image_path + ticker['ticker'] + ".jpg"
-
-        if complex_image_path:
-            output.update({'image_path' : image_path[6:]}) # save path
-        else:
-            output.update({'image_path' : image_path}) # save path
-
-        r = requests.get(
-            	driver.find_element_by_xpath("//img[@data-testid='product-detail-image']").get_attribute('src'))
-        with open(image_path, 'wb') as f:
-            f.write(r.content) # save image to image_path
     except:
-        # close tab
-        driver.close()
-        # switch back to shoe listings page
-        driver.switch_to.window(driver.window_handles[-1])
-        return {}
+        print('get name and ticker faield')
 
-    # save release date
-    try:
-        release_date = {
-            'release_date'  : driver.find_element_by_xpath(
-                                  "//span[@data-testid='product-detail-release date']").text
-            }
-    except:
-        release_date = {'release_date'	: 'N/A'}
-    output.update(release_date)
-
-    # save retail price
-    try:
-        retail_price = {
-            'retail_price'  : driver.find_element_by_xpath(
-                                  "//span[@data-testid='product-detail-retail price']").text
-            }
-
-    except:
-        retail_price = {'retail_price' : 'N/A'}
-    output.update(retail_price)
-
-    gauges = driver.find_elements_by_xpath("//div[@class='gauges']/div[@class='gauge-container']")
-    print(gauges)
-
-    driver.execute_script("window.scrollTo(0,document.body.scrollHeight)")
-    # old code; not sure why I did it this way but it still works so I'm gonna leave it
-    for gauge in gauges:
-        gauge_text = gauge.find_element_by_css_selector("div:nth-child(2)").text.lower()
-        print(gauge_text)
-        if gauge_text == "# of sales":
-            # get # of sales
-            number_of_sales = gauge.find_element_by_css_selector("div:nth-child(3)").text
-            if number_of_sales != "--":
-                output.update({'number_of_sales' : number_of_sales})
-            else:
-                output.update({'number_of_sales' : "N/A"})
-
-        elif "price premium" in gauge_text:
-            # get price premium
-            price_premium = gauge.find_element_by_css_selector("div:nth-child(3)").text
-            if price_premium != "--":
-                output.update({'price_premium' : price_premium})
-            else:
-                output.update({'price_premium' : "N/A"})
-
-        elif gauge_text == "average sale price":
-            # get average sale price
-            average_sale_price = gauge.find_element_by_css_selector("div:nth-child(3)").text
-            if average_sale_price != "--":
-                output.update({'average_sale_price' : average_sale_price})
-            else:
-                output.update({'average_sale_price' : "N/A"})
-
-    # save style code
-    try:
-        style_code = {'style_code' : driver.find_element_by_xpath("//span[@data-testid='product-detail-style']").text}
-    except:
-        style_code = {'style_code' : 'N/A'}
-    output.update(style_code)
-
-    # save colorway of the shoe
-    try:
-        colorway = {'colorway' : driver.find_element_by_xpath("//span[@data-testid='product-detail-colorway']").text}
-    except:
-        colorway = {'colorway' : 'N/A'}
-    output.update(colorway)
-
+    # try:
+    #     view_all_sales = driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[2]/div[2]/span/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/div[2]/div[3]/button")
+    #     action = ActionChains(driver)
+    #     action.click(view_all_sales).perform()
+    # except:
+    #     print("failed to open sales history")
+    
+    # try:
+    #     load_sales_button = driver.find_element_by_link_text("Load More")
+    #     print(load_sales_button)
+    #     time.sleep(30)
+    #     while len(load_sales_button)>0:
+    #         action.click(load_sales_button).perform()
+    # except:
+    #     print("Failed to load all sales history")
     # close tab
     driver.close()
     # switch back to shoe listings page
@@ -226,11 +143,11 @@ def get_all_data_on_page(driver, directory):
             "//div[@class='browse-grid']/div[contains(@class,'tile browse-tile')]/*/a"
             )
     print("This page has ", len(list_of_shoes), " shoe listings")
-#    pprint(list_of_shoes)
+    #    pprint(list_of_shoes)
 
     for i, shoe in enumerate(list_of_shoes):
         shoe_link = shoe.get_attribute('href')
-        shoe_dict = get_shoe_data(shoe_link, driver, directory)
+        shoe_dict = get_shoe_trading_data(shoe_link, driver, directory)
 
         pprint(shoe_dict, indent=12)
         # add to page's dictionary
@@ -259,7 +176,7 @@ def get_category_data(shoe_category,driver):
         link_to_shoe_category = skip_page
         first_category = False
 
-    link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=9"
+    link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=1"
 
     category_directory = link_to_shoe_category[19:(link_to_shoe_category.find('?'))]
 
@@ -479,9 +396,25 @@ def main():
     driver = webdriver.Firefox()
     action = ActionChains(driver)
     
-    # url = 'https://stockx.com/adidas-yeezy-boost-350-v2-lundmark-reflective'
-    # driver.get(url)
+    url = 'https://stockx.com/adidas-yeezy-boost-350-v2-lundmark-reflective'
+    driver.get(url)
+    try:
+        view_all_sales = driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[2]/div[2]/span/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/div[2]/div[3]/button")
+        action = ActionChains(driver)
+        action.click(view_all_sales).perform()
+    except:
+        print("failed to open sales history")
+    
+    try:
+        load_sales_button = driver.find_element_by_xpath("//button[contains(text(), 'Load More')]")
+        print(load_sales_button)
+        # time.sleep(30)
+        while len(load_sales_button)>0:
+            action.click(load_sales_button).perform()
+    except:
+        print("Failed to load all sales history")
 
+    time.sleep(60)
     url = 'https://stockx.com/'
     driver.get(url)
 

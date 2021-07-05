@@ -138,6 +138,21 @@ def get_shoe_data(url, driver, directory,page_wait=PAGE_WAIT,complex_image_path=
         driver.switch_to.window(driver.window_handles[-1])
         return {}
 
+    print("To get shoe size type")
+    # store show size type
+    try:
+        action = ActionChains(driver)
+        element = driver.find_element_by_xpath("//span[@data-testid='product-detail-release date']")
+        action.click(on_element=element).perform()
+        size_type = {
+            'size_type': driver.find_element_by_xpath(
+                "//div[@class='css-vdvsbr ezaexnl0']").text
+        }
+        print('show shoe size type --------')
+        print(size_type)
+    except:
+        size_type= {'size_type': 'N/A'}
+    output.update(size_type)
     # save release date
     try:
         release_date = {

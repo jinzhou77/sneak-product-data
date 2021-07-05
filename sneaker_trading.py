@@ -107,21 +107,22 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
     except:
         print('get name and ticker faield')
 
-    # try:
-    #     view_all_sales = driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[2]/div[2]/span/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/div[2]/div[3]/button")
-    #     action = ActionChains(driver)
-    #     action.click(view_all_sales).perform()
-    # except:
-    #     print("failed to open sales history")
+    try:
+        view_all_sales = driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[2]/div[2]/span/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/div[2]/div[3]/button")
+        action = ActionChains(driver)
+        action.click(view_all_sales).perform()
+    except:
+        print("failed to open sales history")
     
-    # try:
-    #     load_sales_button = driver.find_element_by_link_text("Load More")
-    #     print(load_sales_button)
-    #     time.sleep(30)
-    #     while len(load_sales_button)>0:
-    #         action.click(load_sales_button).perform()
-    # except:
-    #     print("Failed to load all sales history")
+    try:
+        load_sales_button = driver.find_element(By.XPATH, '//button[text()="Load More"]')
+        print("laod sales button found")
+        print(load_sales_button)
+        time.sleep(30)
+        while len(load_sales_button)>0:
+            action.click(load_sales_button).perform()
+    except:
+        print("Failed to load all sales history")
     # close tab
     driver.close()
     # switch back to shoe listings page
@@ -402,17 +403,25 @@ def main():
         view_all_sales = driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[2]/div[2]/span/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/div[2]/div[3]/button")
         action = ActionChains(driver)
         action.click(view_all_sales).perform()
+        time.sleep(5)
     except:
         print("failed to open sales history")
     
-    try:
-        load_sales_button = driver.find_element_by_xpath("//button[contains(text(), 'Load More')]")
-        print(load_sales_button)
-        # time.sleep(30)
-        while len(load_sales_button)>0:
+    while True: 
+        try:
+            table_dialog = driver.find_element_by_xpath("//section[contains(@role, 'dialog')]")
+            print("define the table dialog variable")
+            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", table_dialog)
+            print("scroll within the table")
+            load_sales_button = driver.find_element_by_xpath("//button[contains(text(), 'Load More')]")
+            print('Found load_sales_button')
             action.click(load_sales_button).perform()
-    except:
-        print("Failed to load all sales history")
+            time.sleep(10)
+        except NoSuchElementException:
+            print("All sale history is loaded , sleep for 50s")
+            time.sleep(50)
+            break
+        
 
     time.sleep(60)
     url = 'https://stockx.com/'

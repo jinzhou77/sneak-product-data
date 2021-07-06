@@ -92,7 +92,7 @@ Gathers desired information about the sneaker at the given url.
 """
 def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
     output = {}
-
+    outputs = []
     # open link to shoe
     open_link(driver,url,page_wait=page_wait)
 
@@ -103,32 +103,70 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
 
         # save ticker code
         ticker = {'ticker' : driver.find_element_by_css_selector('.soft-black').text}
+        ticker_var = driver.find_element_by_css_selector('.soft-black').text
         output.update(ticker)
     except:
         print('get name and ticker faield')
 
     try:
-        view_all_sales = driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[2]/div[2]/span/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/div[2]/div[3]/button")
+        last_sale_block = driver.find_element_by_xpath("//div[contains(@class, 'last-sale-block')]")
+        view_all_sales = last_sale_block.find_element_by_xpath("//button[contains(text(), 'View All Sales')]")
         action = ActionChains(driver)
         action.click(view_all_sales).perform()
+        time.sleep(5)
     except:
         print("failed to open sales history")
     
     try:
-        load_sales_button = driver.find_element(By.XPATH, '//button[text()="Load More"]')
-        print("laod sales button found")
-        print(load_sales_button)
-        time.sleep(30)
-        while len(load_sales_button)>0:
-            action.click(load_sales_button).perform()
+        index = 1
+        while True:
+            e = driver.find_element_by_xpath("//button[contains(text(), 'Load More')]")
+            driver.execute_script("arguments[0].scrollIntoView(true);", e)
+            print("Click %d start" % index)
+            ActionChains(driver).move_to_element(WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Load More')]")))).click().perform()
+            print("Click %d Done, sleep for 3s" % index)
+            index+=1
+            time.sleep(3)
+
+    except NoSuchElementException:
+        print("Not able to find the Load More Button, sleep for 50s")
+        time.sleep(10)
+
+    table = driver.find_element_by_xpath("//table[contains(@class, 'activity-table')]")
+
+    try:
+        table = driver.find_element_by_xpath("//table[contains(@class, 'activity-table')]")
+        for row in table.find_elements_by_xpath(".//tr"):
+            trade_info = [td.text for td in row.find_elements_by_tag_name("td")]
+            trade_date = {'date': trade_info[0]}
+            output.update(trade_date)
+            trade_time = {'time': trade_info[1]}
+            output.update(trade_time)
+            trade_size = {'size': trade_info[2]}
+            output.update(trade_size)
+            trade_price = {'price': trade_info[3]}
+            output.update(trade_price)
+            outputs.append(output)
+        pprint(outputs)   
     except:
-        print("Failed to load all sales history")
+        print("Historical Data is not available")
+        trade_date = {'date': 'N/A'}
+        output.update(trade_date)
+        trade_time = {'time': 'N/A'}
+        output.update(trade_time)
+        trade_size = {'size': 'N/A'}
+        output.update(trade_size)
+        trade_price = {'price': 'N/A'}
+        output.update(trade_price)
+        outputs.append(output)
+    
+    save_shoe_trade_info_to_file(directory, ticker_var, outputs)
     # close tab
     driver.close()
     # switch back to shoe listings page
     driver.switch_to.window(driver.window_handles[-1])
 
-    return output
+    return outputs
 
 """
 helper function that gets all shoe data on the current open page and returns it in a list of dictionaries
@@ -148,11 +186,11 @@ def get_all_data_on_page(driver, directory):
 
     for i, shoe in enumerate(list_of_shoes):
         shoe_link = shoe.get_attribute('href')
-        shoe_dict = get_shoe_trading_data(shoe_link, driver, directory)
+        trade_array = get_shoe_trading_data(shoe_link, driver, directory) # [{},{},{},{}]
 
-        pprint(shoe_dict, indent=12)
+        pprint(trade_array, indent=12)
         # add to page's dictionary
-        page_dicts.append(shoe_dict)
+        page_dicts+=trade_array
 
         if BREAKS:
             break
@@ -202,7 +240,7 @@ def get_category_data(shoe_category,driver):
         open_link(driver,page_url)
 
         page_dicts = get_all_data_on_page(driver, category_directory)
-        save_dict_to_file(category_directory, page_num, page_dicts)
+        # save_dict_to_file(category_directory, page_num, page_dicts)
 
         # check if the right arrow refers to stockx home page because for some 
         # reason that's what the right arrow does if there isn't a next page
@@ -269,11 +307,16 @@ helper function to save lists of dictionaries to the correct file
 @param page_dicts: list of data-containing dictionaries
 """
 def save_dict_to_file(directory, page_num, page_dicts):
-    with open(directory + "page" + str(page_num) + ".csv", 'w') as f:
+    with open(directory + "tradeInfo_page" + str(page_num) + ".csv", 'w') as f:
         w = csv.DictWriter(f, page_dicts[0].keys())
         w.writeheader()
         w.writerows(page_dicts)
 
+def save_shoe_trade_info_to_file(directory, ticker, shoe_dicts):
+    with open(directory  + str(ticker) + ".csv", 'w') as f:
+        w = csv.DictWriter(f, shoe_dicts[0].keys())
+        w.writeheader()
+        w.writerows(shoe_dicts)
 
 """
 Obtains a list of all brand web elements using the "browse" dropdown at the top of the site
@@ -397,36 +440,12 @@ def main():
     driver = webdriver.Firefox()
     action = ActionChains(driver)
     
-    url = 'https://stockx.com/adidas-yeezy-boost-350-v2-lundmark-reflective'
-    driver.get(url)
-    try:
-        view_all_sales = driver.find_element_by_xpath("/html/body/div[1]/div[1]/div[2]/div[2]/span/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/div[2]/div[3]/button")
-        action = ActionChains(driver)
-        action.click(view_all_sales).perform()
-        time.sleep(5)
-    except:
-        print("failed to open sales history")
-    
-    while True: 
-        try:
-            table_dialog = driver.find_element_by_xpath("//section[contains(@role, 'dialog')]")
-            print("define the table dialog variable")
-            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", table_dialog)
-            print("scroll within the table")
-            load_sales_button = driver.find_element_by_xpath("//button[contains(text(), 'Load More')]")
-            print('Found load_sales_button')
-            action.click(load_sales_button).perform()
-            time.sleep(10)
-        except NoSuchElementException:
-            print("All sale history is loaded , sleep for 50s")
-            time.sleep(50)
-            break
-        
+    # url = 'https://stockx.com/adidas-yeezy-boost-350-v2-lundmark-reflective'
+    # driver.get(url)
 
-    time.sleep(60)
     url = 'https://stockx.com/'
     driver.get(url)
-
+    time.sleep(60)
     print("done waiting\n\n")
 
     brands = get_brands(driver)

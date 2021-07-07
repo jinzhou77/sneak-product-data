@@ -484,7 +484,8 @@ def main():
 
     url = 'https://stockx.com/'
     driver.get(url)
-
+    
+    time.sleep(60)
     print("done waiting\n\n")
 
     brands = get_brands(driver)

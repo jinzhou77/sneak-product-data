@@ -98,13 +98,10 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
 
     try:
         # save name of sneaker
-        name = {'name' : driver.find_element_by_xpath("//div[@class='col-md-12']/h1").text}
-        output.update(name)
+        name =  driver.find_element_by_xpath("//div[@class='col-md-12']/h1").text
 
         # save ticker code
-        ticker = {'ticker' : driver.find_element_by_css_selector('.soft-black').text}
-        ticker_var = driver.find_element_by_css_selector('.soft-black').text
-        output.update(ticker)
+        ticker = driver.find_element_by_css_selector('.soft-black').text
     except:
         print('get name and ticker faield')
 
@@ -136,18 +133,20 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
 
     try:
         table = driver.find_element_by_xpath("//table[contains(@class, 'activity-table')]")
+        trade_infos = []
         for row in table.find_elements_by_xpath(".//tr"):
-            trade_info = [td.text for td in row.find_elements_by_tag_name("td")]
-            trade_date = {'date': trade_info[0]}
-            output.update(trade_date)
-            trade_time = {'time': trade_info[1]}
-            output.update(trade_time)
-            trade_size = {'size': trade_info[2]}
-            output.update(trade_size)
-            trade_price = {'price': trade_info[3]}
-            output.update(trade_price)
-            outputs.append(output)
-        pprint(outputs)   
+            trade_info = [td.text for td in row.find_elements_by_tag_name("td")] #[]
+            if len(trade_info) > 0:
+                trade_infos.append(trade_info) #[[],[],[],[],[]]
+        for i, trade_info in enumerate(trade_infos):
+            outputs.append({
+                'name': name,
+                'ticker': ticker,
+                'date': trade_infos[i][0],
+                'time': trade_infos[i][1],
+                'size': trade_infos[i][2],
+                'price': trade_infos[i][3],
+            })
     except:
         print("Historical Data is not available")
         trade_date = {'date': 'N/A'}
@@ -160,7 +159,7 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
         output.update(trade_price)
         outputs.append(output)
     
-    save_shoe_trade_info_to_file(directory, ticker_var, outputs)
+    save_shoe_trade_info_to_file(directory, ticker, outputs)
     # close tab
     driver.close()
     # switch back to shoe listings page
@@ -215,7 +214,7 @@ def get_category_data(shoe_category,driver):
         link_to_shoe_category = skip_page
         first_category = False
 
-    link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=1"
+    link_to_shoe_category = "https://stockx.com/adidas/yeezy?page=15"
 
     category_directory = link_to_shoe_category[19:(link_to_shoe_category.find('?'))]
 

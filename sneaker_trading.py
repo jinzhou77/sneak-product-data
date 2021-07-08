@@ -129,8 +129,6 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
         print("Not able to find the Load More Button, sleep for 50s")
         time.sleep(10)
 
-    table = driver.find_element_by_xpath("//table[contains(@class, 'activity-table')]")
-
     try:
         table = driver.find_element_by_xpath("//table[contains(@class, 'activity-table')]")
         trade_infos = []
@@ -147,7 +145,7 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
                 'size': trade_infos[i][2],
                 'price': trade_infos[i][3],
             })
-    except:
+    except NoSuchElementException:
         print("Historical Data is not available")
         trade_date = {'date': 'N/A'}
         output.update(trade_date)

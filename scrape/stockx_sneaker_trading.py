@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from pprint import pprint
 
 import csv
+from random import randint
 
 import requests
 
@@ -62,7 +63,7 @@ num_opened = 0
 
 TOLERANCE = 2
 
-CURRENT_DATE = datetime.now()
+CURRENT_DATE = datetime.now() - timedelta(1)
 """
 Gathers desired information about the sneaker at the given url.
 
@@ -130,7 +131,7 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
             time.sleep(3)
 
     except NoSuchElementException:
-        print("Not able to find the Load More Button, sleep for 50s")
+        print("Not able to find the Load More Button, sleep for 10s")
         time.sleep(10)
 
     try:
@@ -185,7 +186,7 @@ def get_all_data_on_page(driver, directory):
     page_dicts = []
     # grab all links to shoes on the page
     list_of_shoes = driver.find_elements_by_xpath(
-            "//div[@class='browse-grid']/div[contains(@class,'tile browse-tile')]/*/a"
+            "//div[@class='browse-grid']/div[contains(@class,'tile browse-tile')]"
             )
     print("This page has ", len(list_of_shoes), " shoe listings")
     #    pprint(list_of_shoes)
@@ -195,14 +196,11 @@ def get_all_data_on_page(driver, directory):
         trade_array = get_shoe_trading_data(shoe_link, driver, directory) # [{},{},{},{}]
 
         pprint(trade_array, indent=12)
-        # add to page's dictionary
-        page_dicts+=trade_array
 
         if BREAKS:
             break
 
 
-    return page_dicts
 
 """
 helper function that gets all of the data within one category and writes them 
@@ -245,8 +243,7 @@ def get_category_data(shoe_category,driver):
         # open link to category in new tab
         open_link(driver,page_url)
 
-        page_dicts = get_all_data_on_page(driver, category_directory)
-        # save_dict_to_file(category_directory, page_num, page_dicts)
+        get_all_data_on_page(driver, category_directory)
 
         # check if the right arrow refers to stockx home page because for some 
         # reason that's what the right arrow does if there isn't a next page
@@ -300,23 +297,6 @@ def traverse_model_category_list(brand_category_list, driver):
             #close category page
             driver.close()
             driver.switch_to.window(driver.window_handles[0])
-
-#            if BREAKS:
-#                break
-
-
-"""
-helper function to save lists of dictionaries to the correct file
-
-@param directory: directory to be saved in
-@param page_num: number of the page it was pulled from
-@param page_dicts: list of data-containing dictionaries
-"""
-def save_dict_to_file(directory, page_num, page_dicts):
-    with open(directory + "tradeInfo_page" + str(page_num) + ".csv", 'w') as f:
-        w = csv.DictWriter(f, page_dicts[0].keys())
-        w.writeheader()
-        w.writerows(page_dicts)
 
 def save_shoe_trade_info_to_file(directory, ticker, shoe_dicts):
     with open(directory  + str(ticker) + ".csv", 'w') as f:
@@ -387,9 +367,10 @@ def open_link(driver, url, page_wait=PAGE_WAIT):
     global num_opened
     num_opened += 1
     if num_opened % THRESHOLD == 0:
-        print("MEET OPENED LINK THRESHOLD. Sleeping for ", THRESHOLD_WAIT,  "seconds...")
+        threshold_wait = randint(600, 3600)
+        print("MEET OPENED LINK THRESHOLD. Sleeping for ", threshold_wait,  "seconds...")
         print("Current Time:", datetime.now())
-        time.sleep(THRESHOLD_WAIT)
+        time.sleep(threshold_wait)
 
     while True:
         # open new tab
@@ -404,7 +385,9 @@ def open_link(driver, url, page_wait=PAGE_WAIT):
         # check page for robot deterrent
         if not check_for_robot(driver):
             # return if it's not the robot page
-            time.sleep(page_wait) # wait for a little bit so as to not make too many requests
+            new_link_wait = randint(5,20)
+            print("Open New Link, Wait for ", new_link_wait, " seconds")
+            time.sleep(new_link_wait) # wait for a little bit so as to not make too many requests
             return
         else:
             #print("Detected robot page, waiting ", ROBOT_PAGE_WAIT, "seconds...")
@@ -440,7 +423,11 @@ Main function
 Calls get_brands to obtain elements
 """
 def main():
-    driver = webdriver.Chrome('./chromedriver.exe')
+    driver = webdriver.Firefox()
+    # driver = webdriver.Chrome('./chromedriver.exe')
+    driver = webdriver.Edge('./msedgedriver.exe')
+    driver.maximize_window()
+
     action = ActionChains(driver)
     
     # url = 'https://stockx.com/adidas-yeezy-boost-350-v2-lundmark-reflective'
@@ -451,12 +438,12 @@ def main():
     print("Sign In to your StockX Account")
     print("Username: jinzhou66@yahoo.com")
     print("Password: jJ8254164!")
-    time.sleep(60)
+    input("hit enter after login")
 
     print("done waiting\n\n")
     brands = get_brands(driver)
 
-    # delete adidas (don't do if you want to scrape adidas) I'm just focusing on Jordans
+    # delete adidas
     del brands[0]
 
     for brand_element in brands:

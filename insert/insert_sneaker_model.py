@@ -14,25 +14,25 @@ def isnan(value):
         
 def post_all_sneakers(brandname):
     failed = 0
-    df = pd.read_csv('./data/sneakers/adidas/yeezy/sneaker_output.csv')
+    df = pd.read_csv('../data/sneakers/adidas/yeezy/output.csv')
     for index, row in df.iterrows():
         url = row['url']
         brand_name = brandname
         style_name = row['name']
-        image_path = row['image_path']
+        image_path = row['image_path'][1:]
 
         retail_price = None
         if isnan(row['retail_price']) == False :
             retail_price = float(row['retail_price'][1:])
 
-        number_of_sale = 0
-        if math.isnan(float(row['number_of_sales'])) == False:
-            number_of_sale = int(row['number_of_sales'])
+        # number_of_sale = 0
+        # if math.isnan(float(row['number_of_sales'])) == False:
+        #     number_of_sale = int(row['number_of_sales'])
 
-        average_sale_price = None
-        if isnan(row['average_sale_price']) == False:
-            avgPrice = row['average_sale_price'].replace(',', '')
-            average_sale_price = float(avgPrice[1:])
+        # average_sale_price = None
+        # if isnan(row['average_sale_price']) == False:
+        #     avgPrice = row['average_sale_price'].replace(',', '')
+        #     average_sale_price = float(avgPrice[1:])
      
         style_code = row['style_code']
         colorway = row['colorway']
@@ -46,8 +46,6 @@ def post_all_sneakers(brandname):
             'style_name': style_name,
             'image_path': image_path,
             'retail_price': retail_price,
-            'number_of_sale': number_of_sale,
-            'average_sale_price': average_sale_price,
             'style_code': style_code,
             'colorway': colorway,
             'ticker': ticker,

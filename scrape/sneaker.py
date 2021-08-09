@@ -7,6 +7,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.chrome.options import Options
+from fake_useragent import UserAgent
+
 
 import time
 import numpy as np
@@ -20,7 +23,7 @@ from random import randint
 import requests
 from datetime import datetime, timedelta
 
-skip_page = "https://stockx.com/retro-jordans/air-jordan-1/release-date?page=6"
+skip_page = "https://stockx.com/retro-jordans/air-jordan-1/release-date?page=16"
 first_category = False # skips to start on a specified page if set to true
 
 # after opening a link, wait this long
@@ -28,7 +31,6 @@ PAGE_WAIT = 20
 
 # number of links before long wait
 THRESHOLD = 50
-
 
 num_opened = 0
 
@@ -46,8 +48,8 @@ def get_shoe_data(url, driver, directory, sneaker_basic, trading_directory, comp
         name = {'name' : sneaker_basic['title']}
         output.update(name)
         
-        release_date = {'release_date': sneaker_basic['release_date']}
-        output.update(release_date)
+        sales_last_72 = {'sales_last_72': sneaker_basic['sales_last_72']}
+        output.update(sales_last_72)
 
         ticker_code = driver.find_element_by_css_selector('.soft-black').text
         ticker = {'ticker' : ticker_code}
@@ -78,6 +80,15 @@ def get_shoe_data(url, driver, directory, sneaker_basic, trading_directory, comp
         return {}
 
     try:
+        release_date = {
+            'release_date'  : driver.find_element_by_xpath(
+                                  "//span[@data-testid='product-detail-release date']").text
+            }
+    except:
+        release_date = {'release_date'	: 'N/A'}
+    output.update(release_date)
+    
+    try:
         retail_price = {
             'retail_price'  : driver.find_element_by_xpath(
                                   "//span[@data-testid='product-detail-retail price']").text
@@ -99,39 +110,39 @@ def get_shoe_data(url, driver, directory, sneaker_basic, trading_directory, comp
     output.update(colorway)
 
     # Code that does not need for now 
-        # gauges_wrapper = driver.find_element_by_xpath("//div[contains(@class, 'gauges-wrapper')]")
-        # driver.execute_script("arguments[0].scrollIntoView(true);", gauges_wrapper)
-        # gauges = driver.find_elements_by_xpath("//div[@class='gauges']/div[@class='gauge-container']")
+    gauges_wrapper = driver.find_element_by_xpath("//div[contains(@class, 'gauges-wrapper')]")
+    driver.execute_script("arguments[0].scrollIntoView(true);", gauges_wrapper)
+    gauges = driver.find_elements_by_xpath("//div[@class='gauges']/div[@class='gauge-container']")
 
-        # # old code; not sure why I did it this way but it still works so I'm gonna leave it
-        # for gauge in gauges:
-        #     gauge_text = gauge.find_element_by_css_selector("div:nth-child(2)").text.lower()
-        #     print(gauge_text)
-        #     if gauge_text == "# of sales":
-        #         # get # of sales
-        #         number_of_sales = gauge.find_element_by_css_selector("div:nth-child(3)").text
-        #         if number_of_sales != "--":
-        #             output.update({'number_of_sales' : number_of_sales})
-        #         else:
-        #             output.update({'number_of_sales' : "0"})
+    # old code; not sure why I did it this way but it still works so I'm gonna leave it
+    for gauge in gauges:
+        gauge_text = gauge.find_element_by_css_selector("div:nth-child(2)").text.lower()
+        print(gauge_text)
+        if gauge_text == "# of sales":
+            # get # of sales
+            number_of_sales = gauge.find_element_by_css_selector("div:nth-child(3)").text
+            if number_of_sales != "--":
+                output.update({'number_of_sales' : number_of_sales})
+            else:
+                output.update({'number_of_sales' : "0"})
 
-        #     elif "price premium" in gauge_text:
-        #         # get price premium
-        #         price_premium = gauge.find_element_by_css_selector("div:nth-child(3)").text
-        #         if price_premium != "--":
-        #             output.update({'price_premium' : price_premium})
-        #         else:
-        #             output.update({'price_premium' : "N/A"})
+        elif "price premium" in gauge_text:
+            # get price premium
+            price_premium = gauge.find_element_by_css_selector("div:nth-child(3)").text
+            if price_premium != "--":
+                output.update({'price_premium' : price_premium})
+            else:
+                output.update({'price_premium' : "N/A"})
 
-        #     elif gauge_text == "average sale price":
-        #         # get average sale price
-        #         average_sale_price = gauge.find_element_by_css_selector("div:nth-child(3)").text
-        #         if average_sale_price != "--":
-        #             output.update({'average_sale_price' : average_sale_price})
-        #         else:
-        #             output.update({'average_sale_price' : "0.0"})
+        elif gauge_text == "average sale price":
+            # get average sale price
+            average_sale_price = gauge.find_element_by_css_selector("div:nth-child(3)").text
+            if average_sale_price != "--":
+                output.update({'average_sale_price' : average_sale_price})
+            else:
+                output.update({'average_sale_price' : "0.0"})
 
-    get_shoe_trading_data(ticker_code, sneaker_basic['title'], driver, trading_directory)
+    # get_shoe_trading_data(ticker_code, sneaker_basic['title'], driver, trading_directory)
     
     driver.close()
     driver.switch_to.window(driver.window_handles[-1])
@@ -205,41 +216,66 @@ def get_shoe_trading_data(ticker, sneaker_title, driver, directory):
 
     save_shoe_trade_info_to_file(directory, ticker, outputs)
 
-
-def get_all_data_on_page(driver, directory, trading_directory):
+def get_all_data_on_page(driver, directory, trading_directory, number_of_shoes):
     page_dicts = []
     list_of_shoes = driver.find_elements_by_xpath(
             "//div[@class='browse-grid']/div[contains(@class,'tile browse-tile')]"
             )
     print("This page has ", len(list_of_shoes), " shoe listings")
-    for i, shoe in enumerate(list_of_shoes):
-        shoe_link_elem = shoe.find_element_by_xpath(".//a")
-        shoe_link = shoe_link_elem.get_attribute('href')
-        shoe_title = shoe.find_element_by_xpath(".//div[contains(@class, 'css-pgwwog-PrimaryText')]").text
-        shoe_release_date = shoe.find_element_by_xpath(".//div[contains(@class, 'release_date')]").text
-        validation_res = sneaker_validation(shoe_title, shoe_release_date)
-        if validation_res[0] == False:
-            continue
+    
+    if len(list_of_shoes) > number_of_shoes:
+        index = 0
+        while number_of_shoes > 0:
+            shoe_link_elem = list_of_shoes[index].find_element_by_xpath(".//a")
+            shoe_link = shoe_link_elem.get_attribute('href')
+            shoe_title = list_of_shoes[index].find_element_by_xpath(".//div[contains(@class, 'css-pgwwog-PrimaryText')]").text
+            shoe_72_sales = list_of_shoes[index].find_element_by_xpath(".//div[contains(@class, 'most-active')]").text
+            validation_res = sneaker_validation(shoe_title, shoe_72_sales)
+            if validation_res[0] == False:
+                index+=1
+                continue
+            shoe_dict = get_shoe_data(shoe_link, driver, directory, validation_res[1], trading_directory)
+            pprint(shoe_dict, indent=8)      
+            page_dicts.append(shoe_dict)
+            index+=1
+            number_of_shoes-=1
+    else:
+        for i, shoe in enumerate(list_of_shoes):
+            shoe_link_elem = shoe.find_element_by_xpath(".//a")
+            shoe_link = shoe_link_elem.get_attribute('href')
+            shoe_title = shoe.find_element_by_xpath(".//div[contains(@class, 'css-pgwwog-PrimaryText')]").text
+            shoe_72_sales = shoe.find_element_by_xpath(".//div[contains(@class, 'most-active')]").text
+            validation_res = sneaker_validation(shoe_title, shoe_72_sales)
+            if validation_res[0] == False:
+                continue
+            shoe_dict = get_shoe_data(shoe_link, driver, directory, validation_res[1], trading_directory)
+            pprint(shoe_dict, indent=8)
+            page_dicts.append(shoe_dict)
         
-        shoe_dict = get_shoe_data(shoe_link, driver, directory, validation_res[1], trading_directory)
-        pprint(shoe_dict, indent=8)
-        page_dicts.append(shoe_dict)
     return page_dicts
 
-def sneaker_validation(title, release_date):
-    if 'N/A' in release_date or 'N/A' in title:
+def sneaker_validation(title, shoe_72_sales):
+    if 'N/A' in shoe_72_sales or 'N/A' in title:
         print("N/A value found in sneaker title or release_date.")
         return (False, None)
 
-    #validation on release_date
-    date_str = release_date.replace("Release: ", "")
-    print("Shoe Release Date:", date_str)
-    datetime_obj = datetime.strptime(date_str, "%m/%d/%Y")
-    current_date = datetime.now()
-    if datetime_obj > current_date:
-        print("The Sneaker is not released yet")
-        return (False, None)
+    # #validation on release_date
+    # date_str = release_date.replace("Release: ", "")
+    # print("Shoe Release Date:", date_str)
+    # datetime_obj = datetime.strptime(date_str, "%m/%d/%Y")
+    # current_date = datetime.now()
+    # if datetime_obj > current_date:
+    #     print("The Sneaker is not released yet")
+    #     return (False, None)
 
+    # validation on number of sale over past 72 hours
+    # sales_str = shoe_72_sales.replace(" # Of Sales: ", "")
+    print("Number of shoes sold in past 72 hours", shoe_72_sales.replace("# Of Sales: ", ""))
+    try:
+        sales_int = int(shoe_72_sales.replace("# Of Sales: ", ""))
+    except:
+        return (False, None)
+    
     #validation on sneaker name
     invalid_names = ['infant', 'kids', '(gs)', '(ps)', '(i)', '(td)']
     print("Shoe Title:", title)
@@ -249,14 +285,13 @@ def sneaker_validation(title, release_date):
             return (False, None)
 
     basic_info = {
-        'release_date': date_str,
+        'sales_last_72': sales_int,
         'title': title
     }
     return (True, basic_info)
 
-def get_category_data(shoe_category,driver):
+def get_category_data(link_to_shoe_category, driver):
     global first_category
-    link_to_shoe_category = shoe_category.get_attribute('href')
 
     category_directory = link_to_shoe_category[19:]
 
@@ -289,24 +324,31 @@ def get_category_data(shoe_category,driver):
     page_url = link_to_shoe_category
     # get all data on the page, if there is a next page get the info on that page too
     release_date_toggle = False
-    while True:
+    number_of_shoes = 3
+    shoes = []
+    while number_of_shoes > 0:
         # open link to category in new tab
         open_link(driver,page_url)
         if release_date_toggle == False:
-            input("Hit Enter after Sort the sneakers with most recent release")
+            input("Hit Enter after Sort the sneakers with most popular")
             release_date_toggle = True
-        page_dicts = get_all_data_on_page(driver, category_directory, trading_directory)
-        save_dict_to_file(category_directory, page_num, page_dicts)
-
+        page_data = get_all_data_on_page(driver, category_directory, trading_directory, number_of_shoes)
+        number_of_shoes-=len(page_data)
+        shoes+=page_data
         # check if the right arrow refers to stockx home page because for some 
         # reason that's what the right arrow does if there isn't a next page
-        right_arrows = driver.find_elements_by_xpath(
+        try:
+            right_arrows = driver.find_elements_by_xpath(
         	"//ul[contains(@class,'ButtonList')]/a[contains(@class,'css-n29mp3-NavigationButton')]")
-        #print(right_arrows)
 
-        page_url = right_arrows[1].get_attribute('href')
-        if (page_url == 'https://stockx.com/'):
-            # pass
+            page_url = right_arrows[1].get_attribute('href')
+            if (page_url == 'https://stockx.com/'):
+                # pass
+                break
+        except:
+            print("Next Page Does Not Exist")
+            driver.close()
+            driver.switch_to.window(driver.window_handles[-1])
             break
 
         # before going to next page, close the current page
@@ -314,22 +356,33 @@ def get_category_data(shoe_category,driver):
         driver.switch_to.window(driver.window_handles[-1])
 
         page_num += 1
+    save_dict_to_file(category_directory, shoes)
 
-
-def traverse_model_category_list(brand_category_list, driver):
+def traverse_model_category_list(brand_category_list, brand_name, driver):
+    model_links = []
     for brand_category in brand_category_list:
         shoe_models = brand_category.find_elements_by_xpath("./li/a")
+        if brand_name.lower() == "air jordan":
+            wanted_models = ['1','3','4','5','6','7','9','11','12','13', 'jordan off-white']
+        elif brand_name.lower() == 'adidas':
+            wanted_models = ['yeezy', 'nmd', 'ultra boost']
+        elif brand_name.lower() =='nike':
+            wanted_models = ['kd', 'kobe', 'lebron', 'air force', 'air max', 'basketball']
+            
+        for models in shoe_models:
+            if(models.text.lower() in wanted_models):
+                model_links.append(models.get_attribute('href'))
+    print("Number of shoe models:", len(model_links))
+    for link in model_links:
+        get_category_data(link, driver)
 
-        for model in shoe_models:
-            get_category_data(model, driver)
-
-            #close category page
-            driver.close()
-            driver.switch_to.window(driver.window_handles[0])
+        # #close category page
+        # driver.close()
+        # driver.switch_to.window(driver.window_handles[0])
 
 
-def save_dict_to_file(directory, page_num, page_dicts):
-    with open(directory + "page" + str(page_num) + ".csv", 'w') as f:
+def save_dict_to_file(directory, page_dicts):
+    with open(directory + "result.csv", 'w') as f:
         w = csv.DictWriter(f, page_dicts[0].keys())
         w.writeheader()
         w.writerows(page_dicts)
@@ -359,13 +412,10 @@ def browse_sneakers_dropdown(driver):
     # hover over  browse menu
     browse_dropdown = driver.find_element_by_xpath("//li[@class='dropdown browse-dropdown']") 
     action.move_to_element(browse_dropdown).perform()
-    print("browser_dropdown")
-#    time.sleep(1)
 
     # hover over sneakers menu
     sneaker_dropdown = driver.find_element_by_xpath("//a[contains(@data-testid,'submenu-sneakers')]")
     action.move_to_element(sneaker_dropdown).perform()
-    print("sneaker_dropdown")
 
 def open_link(driver, url):
 
@@ -416,10 +466,24 @@ def check_for_robot(driver):
 
 
 def main():
-    driver = webdriver.Firefox()
-    # driver = webdriver.Chrome('./chromedriver.exe')
+    
+    options = Options()
+    ua = UserAgent()
+    userAgent = ua.random
+    options.add_argument(f'user-agent={userAgent}')
+    
+    # firefox_profile = webdriver.FirefoxProfile()
+    # firefox_profile.set_preference("browser.privatebrowsing.autostart", True)
+    # driver = webdriver.Firefox(firefox_profile=firefox_profile)
+    
+    # chrome_options = webdriver.ChromeOptions()
+    # chrome_options.add_argument("--incognito")
+    driver = webdriver.Chrome(options=options, executable_path='./chromedriver.exe')
+    
     # driver = webdriver.Edge('./msedgedriver.exe')
+    
     driver.maximize_window()
+
 
     action = ActionChains(driver)
     
@@ -433,12 +497,11 @@ def main():
 
     print("done waiting\n\n")
 
-
     brands = get_brands(driver)
 
-    # delete adidas
     del brands[0]
-
+    # del brands[1]
+    
     for brand_element in brands:
         browse_sneakers_dropdown(driver)
         print(brand_element.text)
@@ -450,7 +513,7 @@ def main():
         # cleans out fake/empty links that wouldn't be accessible to normal users
         brand_categories = [x for x in brand_categories if x.text.strip() != '']
 
-        traverse_model_category_list(brand_categories, driver)
+        traverse_model_category_list(brand_categories, brand_element.text, driver)
 
         print("All Done!")
 

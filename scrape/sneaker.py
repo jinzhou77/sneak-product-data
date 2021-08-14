@@ -297,11 +297,11 @@ def get_category_data(link_to_shoe_category, driver):
 
     category_directory = link_to_shoe_category[19:]
 
-    category_directory = "../data/sneakers/" + category_directory + "/"
+    category_directory = "../data/sneakers/" + category_directory.replace("-", "") + "/"
     # if the desired directory doesn't exist
-    if (not os.path.isdir("../data/sneakers/" + category_directory)):
+    if (not os.path.isdir("../data/sneakers/" + category_directory.replace("-", ""))):
         # create the desired directory
-        os.makedirs(category_directory, exist_ok=True)
+        os.makedirs(category_directory.replace("-", ""), exist_ok=True)
 
     trading_directory = link_to_shoe_category[19:]
     trading_directory = "../data/stockX/sneakers/" + trading_directory + "/"
@@ -501,7 +501,6 @@ def main():
 
     brands = get_brands(driver)
     
-    del brands[0]
     for brand_element in brands:
         browse_sneakers_dropdown(driver)
         print(brand_element.text)

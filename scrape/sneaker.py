@@ -30,13 +30,15 @@ first_category = False # skips to start on a specified page if set to true
 PAGE_WAIT = 20
 
 # number of links before long wait
-THRESHOLD = 50
+THRESHOLD = 55
 
 num_opened = 0
 
 CURRENT_DATE = datetime.now() - timedelta(1)
 
 TOLERANCE = 1
+
+NUMBER_OF_SNEAKERS = 10
 
 def get_shoe_data(url, driver, directory, sneaker_basic, trading_directory, complex_image_path=True):
     output = {}
@@ -324,7 +326,7 @@ def get_category_data(link_to_shoe_category, driver):
     page_url = link_to_shoe_category
     # get all data on the page, if there is a next page get the info on that page too
     release_date_toggle = False
-    number_of_shoes = 3
+    number_of_shoes = NUMBER_OF_SNEAKERS
     shoes = []
     while number_of_shoes > 0:
         # open link to category in new tab
@@ -441,7 +443,7 @@ def open_link(driver, url):
         # check page for robot deterrent
         if not check_for_robot(driver):
             # return if it's not the robot page
-            new_link_wait = randint(5,20)
+            new_link_wait = randint(1,10)
             print("Open New Link, Wait for ", new_link_wait, " seconds")
             time.sleep(new_link_wait) # wait for a little bit so as to not make too many requests
             return
@@ -498,10 +500,8 @@ def main():
     print("done waiting\n\n")
 
     brands = get_brands(driver)
-
-    del brands[0]
-    # del brands[1]
     
+    del brands[0]
     for brand_element in brands:
         browse_sneakers_dropdown(driver)
         print(brand_element.text)

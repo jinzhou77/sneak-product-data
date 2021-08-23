@@ -9,7 +9,7 @@ failed = 0
   
 def post_all_sneakers(brand_name, model_name):
     
-    df = pd.read_csv('../data/sneakers/'+ brand_name + '/' + model_name + '/result.csv', encoding = "ISO-8859-1")
+    df = pd.read_csv('../data/sneakers/'+ brand_name + '/' + model_name.replace("-", "") + '/result.csv', encoding = "ISO-8859-1")
     df = df.replace(np.nan, 'N/A', regex=True)
     for index, row in df.iterrows():
         
@@ -82,9 +82,9 @@ def post_all_sneakers(brand_name, model_name):
 
 def main():
     map = {
-        'retrojordans': ['air-jordan-1','air-jordan-3','air-jordan-4','air-jordan-5','air-jordan-6','air-jordan-7','air-jordan-9','air-jordan-11','air-jordan-12','air-jordan-13'],
-        'adidas': ['yeezy', 'nmd', 'ultra-boost'],
-        'nike': ['air-force', 'air-max', 'basketball', 'kd', 'kobe', 'lebron']
+        'retrojordans': ['air-jordan-1','air-jordan-3','air-jordan-4','air-jordan-5','air-jordan-6','air-jordan-11','air-jordan-12','air-jordan-13'],
+        'adidas': ['yeezy'],
+        'nike': ['air-force', 'air-max', 'basketball', 'kobe', 'lebron']
     }
     number_of_records = 0
     for brand, models in map.items():

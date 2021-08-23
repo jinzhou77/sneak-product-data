@@ -38,9 +38,7 @@ CURRENT_DATE = datetime.now() - timedelta(1)
 
 TOLERANCE = 1
 
-NUMBER_OF_SNEAKERS = 10
-
-def get_shoe_data(url, driver, directory, sneaker_basic, trading_directory, complex_image_path=True):
+def get_shoe_data(url, driver, directory, sneaker_basic, complex_image_path=True):
     output = {}
     open_link(driver,url)
 
@@ -142,83 +140,13 @@ def get_shoe_data(url, driver, directory, sneaker_basic, trading_directory, comp
             if average_sale_price != "--":
                 output.update({'average_sale_price' : average_sale_price})
             else:
-                output.update({'average_sale_price' : "0.0"})
-
-    # get_shoe_trading_data(ticker_code, sneaker_basic['title'], driver, trading_directory)
-    
+                output.update({'average_sale_price' : "0.0"})    
     driver.close()
     driver.switch_to.window(driver.window_handles[-1])
 
     return output
 
-
-def get_shoe_trading_data(ticker, sneaker_title, driver, directory):
-    
-    output = {}
-    outputs = []
-
-    try:
-        last_sale_block = driver.find_element_by_xpath("//div[contains(@class, 'last-sale-block')]")
-        view_all_sales = last_sale_block.find_element_by_xpath("//button[contains(text(), 'View All Sales')]")
-        action = ActionChains(driver)
-        action.click(view_all_sales).perform()
-        time.sleep(10)
-    except:
-        print("failed to open sales history")
-    
-    try:
-        index = 1
-        while True: #Fucking stockX sometimes does not sort the trading data, have to expand all trade data here. Fucking dumb ass shit
-            e = driver.find_element_by_xpath("//button[contains(text(), 'Load More')]")
-            driver.execute_script("arguments[0].scrollIntoView(true);", e)
-            print("Click %d start" % index)
-            ActionChains(driver).move_to_element(WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Load More')]")))).click().perform()
-            print("Click %d Done" % index)
-            time.sleep(2)
-            index+=1
-    except NoSuchElementException:
-        print("Not able to find the Load More Button, sleep for 10s")
-
-    try:
-        table = driver.find_element_by_xpath("//table[contains(@class, 'activity-table')]")
-        trade_infos = []
-        for row in table.find_elements_by_xpath(".//tr"):
-            trade_info = [td.text for td in row.find_elements_by_tag_name("td")] #[]
-            if len(trade_info) > 0:
-                trade_infos.append(trade_info) #[[],[],[],[],[]]
-        for i, trade_info in enumerate(trade_infos):
-            date_obj = datetime.strptime( trade_infos[i][0], "%A, %B %d, %Y")
-            within_tolerance = (CURRENT_DATE - date_obj) <= timedelta(TOLERANCE)
-            if within_tolerance == True:
-                outputs.append({
-                    'name': sneaker_title,
-                    'ticker': ticker,
-                    'date': trade_infos[i][0],
-                    'time': trade_infos[i][1],
-                    'size': trade_infos[i][2],
-                    'price': trade_infos[i][3],
-                })
-    except NoSuchElementException:
-        print("Historical Data is not available")
-        name = {'name': sneaker_title}
-        output.update(name)
-        ticker = {'ticker': ticker}
-        output.update(ticker)
-        trade_date = {'date': 'N/A'}
-        output.update(trade_date)
-        trade_time = {'time': 'N/A'}
-        output.update(trade_time)
-        trade_size = {'size': 'N/A'}
-        output.update(trade_size)
-        trade_price = {'price': 'N/A'}
-        output.update(trade_price)
-        outputs.append(output)
-    
-    pprint(outputs, indent=12)
-
-    save_shoe_trade_info_to_file(directory, ticker, outputs)
-
-def get_all_data_on_page(driver, directory, trading_directory, number_of_shoes):
+def get_all_data_on_page(driver, directory, number_of_shoes):
     page_dicts = []
     list_of_shoes = driver.find_elements_by_xpath(
             "//div[@class='browse-grid']/div[contains(@class,'tile browse-tile')]"
@@ -236,7 +164,7 @@ def get_all_data_on_page(driver, directory, trading_directory, number_of_shoes):
             if validation_res[0] == False:
                 index+=1
                 continue
-            shoe_dict = get_shoe_data(shoe_link, driver, directory, validation_res[1], trading_directory)
+            shoe_dict = get_shoe_data(shoe_link, driver, directory, validation_res[1])
             pprint(shoe_dict, indent=8)      
             page_dicts.append(shoe_dict)
             index+=1
@@ -250,7 +178,7 @@ def get_all_data_on_page(driver, directory, trading_directory, number_of_shoes):
             validation_res = sneaker_validation(shoe_title, shoe_72_sales)
             if validation_res[0] == False:
                 continue
-            shoe_dict = get_shoe_data(shoe_link, driver, directory, validation_res[1], trading_directory)
+            shoe_dict = get_shoe_data(shoe_link, driver, directory, validation_res[1])
             pprint(shoe_dict, indent=8)
             page_dicts.append(shoe_dict)
         
@@ -292,7 +220,7 @@ def sneaker_validation(title, shoe_72_sales):
     }
     return (True, basic_info)
 
-def get_category_data(link_to_shoe_category, driver):
+def get_category_data(link_to_shoe_category, driver, number_of_pairs):
     global first_category
 
     category_directory = link_to_shoe_category[19:]
@@ -302,13 +230,6 @@ def get_category_data(link_to_shoe_category, driver):
     if (not os.path.isdir("../data/sneakers/" + category_directory.replace("-", ""))):
         # create the desired directory
         os.makedirs(category_directory.replace("-", ""), exist_ok=True)
-
-    trading_directory = link_to_shoe_category[19:]
-    trading_directory = "../data/stockX/sneakers/" + trading_directory + "/"
-    # if the desired directory doesn't exist
-    if (not os.path.isdir("../data/stockX/sneakers/" + trading_directory)):
-        # create the desired directory
-        os.makedirs(trading_directory, exist_ok=True)
 
     if first_category:
         print("First pass detected skipping to", skip_page)
@@ -326,26 +247,22 @@ def get_category_data(link_to_shoe_category, driver):
     page_url = link_to_shoe_category
     # get all data on the page, if there is a next page get the info on that page too
     release_date_toggle = False
-    number_of_shoes = NUMBER_OF_SNEAKERS
+    number_of_shoes = number_of_pairs
     shoes = []
     while number_of_shoes > 0:
-        # open link to category in new tab
         open_link(driver,page_url)
         if release_date_toggle == False:
             input("Hit Enter after Sort the sneakers with most popular")
             release_date_toggle = True
-        page_data = get_all_data_on_page(driver, category_directory, trading_directory, number_of_shoes)
+        page_data = get_all_data_on_page(driver, category_directory, number_of_shoes)
         number_of_shoes-=len(page_data)
         shoes+=page_data
-        # check if the right arrow refers to stockx home page because for some 
-        # reason that's what the right arrow does if there isn't a next page
         try:
             right_arrows = driver.find_elements_by_xpath(
-        	"//ul[contains(@class,'ButtonList')]/a[contains(@class,'css-n29mp3-NavigationButton')]")
-
-            page_url = right_arrows[1].get_attribute('href')
+        	"//div[contains(@class, 'PaginationContainer')]/ul[contains(@class,'ButtonList')]/a")
+            page_url = right_arrows[-1].get_attribute('href')
+            print(page_url)
             if (page_url == 'https://stockx.com/'):
-                # pass
                 break
         except:
             print("Next Page Does Not Exist")
@@ -362,25 +279,47 @@ def get_category_data(link_to_shoe_category, driver):
 
 def traverse_model_category_list(brand_category_list, brand_name, driver):
     model_links = []
+    wanted_models = []
+    model_pairs = []
     for brand_category in brand_category_list:
         shoe_models = brand_category.find_elements_by_xpath("./li/a")
         if brand_name.lower() == "air jordan":
-            wanted_models = ['1','3','4','5','6','7','9','11','12','13', 'jordan off-white']
+            wanted_models = ['1', '3', '4', '5', '6','11','12','13']
+            model_pairs = {
+                '1': 100,
+                '3': 10,
+                '4': 10,
+                '5': 10,
+                '6': 10,
+                '11': 10,
+                '12': 10,
+                '13': 10,
+            }
         elif brand_name.lower() == 'adidas':
-            wanted_models = ['yeezy', 'nmd', 'ultra boost']
+            wanted_models = ['yeezy']
+            model_pairs = {
+                'yeezy': 100
+            }
         elif brand_name.lower() =='nike':
-            wanted_models = ['kd', 'kobe', 'lebron', 'air force', 'air max', 'basketball']
-            
+            wanted_models = ['kobe', 'lebron', 'air force', 'air max', 'basketball']
+            model_pairs = {
+                'kobe': 10,
+                'lebron': 10,
+                'air force': 10,
+                'air max': 10,
+                'basketball': 80
+            }
         for models in shoe_models:
             if(models.text.lower() in wanted_models):
-                model_links.append(models.get_attribute('href'))
+                model_links.append({
+                    'link': models.get_attribute('href'),
+                    'number_of_pairs': model_pairs[models.text.lower()]
+                })
     print("Number of shoe models:", len(model_links))
-    for link in model_links:
-        get_category_data(link, driver)
+    for model_link in model_links:
+        print(model_link['number_of_pairs'])
+        get_category_data(model_link['link'], driver, model_link['number_of_pairs'])
 
-        # #close category page
-        # driver.close()
-        # driver.switch_to.window(driver.window_handles[0])
 
 
 def save_dict_to_file(directory, page_dicts):
@@ -425,11 +364,9 @@ def open_link(driver, url):
     global num_opened
     num_opened += 1
     if num_opened % THRESHOLD == 0:
-        threshold_wait = randint(600, 3600)
-        print("MEET OPENED LINK THRESHOLD. Sleeping for ", threshold_wait,  "seconds...")
         print("Current Time:", datetime.now())
-        time.sleep(threshold_wait)
-
+        print("MEET OPENED LINK THRESHOLD. HIT Enter to Continue")
+        input("hit enter to continue")
     while True:
         # open new tab
         driver.execute_script("window.open();")

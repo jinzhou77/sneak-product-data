@@ -410,13 +410,6 @@ def main():
     ua = UserAgent()
     userAgent = ua.random
     options.add_argument(f'user-agent={userAgent}')
-    
-    # firefox_profile = webdriver.FirefoxProfile()
-    # firefox_profile.set_preference("browser.privatebrowsing.autostart", True)
-    # driver = webdriver.Firefox(firefox_profile=firefox_profile)
-    
-    # chrome_options = webdriver.ChromeOptions()
-    # chrome_options.add_argument("--incognito")
     driver = webdriver.Chrome(options=options, executable_path='./chromedriver.exe')
     
     # driver = webdriver.Edge('./msedgedriver.exe')

@@ -1,4 +1,5 @@
 import os
+from requests.models import HTTPError
 
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
@@ -7,6 +8,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from fake_useragent import UserAgent
+from selenium.webdriver.chrome.options import Options
 
 import time
 import numpy as np
@@ -17,8 +20,6 @@ import csv
 
 import requests
 
-first_category = True # skips to start on a specified page if set to true
-
 BREAKS = False # if true, gets data for one sneaker per page
 
 # after opening a link, wait this long
@@ -26,9 +27,6 @@ PAGE_WAIT = 5
 
 # number of links before long wait
 THRESHOLD = 60
-
-# after opening THRESHOLD number of links wait this long
-THRESHOLD_WAIT = 1200
 
 # after encountering the "Are you a robot?" page wait this long
 ROBOT_PAGE_WAIT = 18000
@@ -147,19 +145,19 @@ def get_shoe_trading_data(driver, sneaker_name, info_dict, page_wait=PAGE_WAIT):
     driver.switch_to.window(driver.window_handles[-1])
     return outputs
 
-"""
-helper function that gets all shoe data on the current open page and returns it in a list of dictionaries
+def title_validation(title, type):
+    if type=='men':
+        constrains = [' PS ', ' GS' , '(PS)', '(GS)']
+        for invalid in constrains:
+            if invalid in title:
+                return False
+    return True
 
-@param driver: reference to selenium webdriver object
-@param directory: passed to get_shoe_data for organized image storage
-@return: list of the gathered data from all shoes on a page
-"""
-def get_all_data_on_page(driver):
+def get_all_data_on_page(driver, type):
     time0 = datetime.now()
     within_tolerance = True
     # grab all links to shoes on the page
-    print("Click 192 Now!!!!")
-    time.sleep(15)
+    
     list_of_shoes = driver.find_elements_by_xpath(
             "//div[@id='srp-river-results']/ul[contains(@class, 'srp-results')]/li"
             )
@@ -170,6 +168,8 @@ def get_all_data_on_page(driver):
     for i, shoe in enumerate(list_of_shoes):
         title_element = shoe.find_element_by_xpath(".//a[@class='s-item__link']")
         sold_title = title_element.text
+        if title_validation(sold_title, type)==False:
+            continue
         encoded = sold_title.encode("ascii", "ignore")
         sold_title = encoded.decode()
         href_link = title_element.get_attribute("href")
@@ -214,14 +214,11 @@ saving the dictionary of data scraped from that shoe's page
 def traverse_sneaker_list(driver, sneaker_lists):
     for i, sneaker in enumerate(sneaker_lists):
         trades = []
-        sneaker_name = sneaker
-        sneaker = sneaker.replace("adidas", '')
-        if('Yeezy Boost 350 V2 Black Red (2017/2020)' in sneaker):
-            sneaker = "Yeezy Boost 350 V2 Black Red"
+        sneaker_name = sneaker['title']
+
         ebay_search = driver.find_element_by_xpath("//input[contains(@id, 'gh-ac')]")
         ebay_search.clear()
-        ebay_search.send_keys(sneaker)
-
+        ebay_search.send_keys(sneaker_name)
         ebay_search.send_keys(Keys.ENTER)
         print("Wait for 5 sec for page reload")
         time.sleep(5)
@@ -230,8 +227,10 @@ def traverse_sneaker_list(driver, sneaker_lists):
             all_filter = driver.find_element_by_xpath("//div[contains(@id, 's0-14-11-0-1-2-6-0-20[8]-4')]")
             driver.execute_script("arguments[0].scrollIntoView(true);", all_filter)
             ActionChains(driver).click(all_filter).perform()
-            time.sleep(3)
-
+            if not check_for_robot(driver):
+                time.sleep(3)
+            else: 
+                input("hit enter to continue")
             sold_items = driver.find_element_by_xpath("//div[contains(@id, 'c3-subPanel-LH_Sold_Sold%20Items')]/label/div/span")
             auth_guar = driver.find_element_by_xpath("//div[contains(@id, 'c3-subPanel-LH_AV_Authenticity%20Guarantee')]/label/div/span")
             completed_items = driver.find_element_by_xpath("//div[contains(@id, 'c3-subPanel-LH_Complete_Completed%20Items')]/label/div/span")
@@ -242,12 +241,18 @@ def traverse_sneaker_list(driver, sneaker_lists):
             
             apply_button = driver.find_element_by_xpath("//div[contains(@id, 'c3-footerId')]/div[contains(@class, 'x-overlay-footer__apply')]/button")
             ActionChains(driver).click(apply_button).perform()
-            print("Start Wait for all filter to applied")
-            time.sleep(5)
-            print("End Wait for all filter to applied\n\n")
+            if not check_for_robot(driver):
+                print("Start Wait for all filter to applied")
+                time.sleep(5)
+                print("End Wait for all filter to applied\n\n")
+            else: 
+                input("hit enter to continue")
+        
+        
+        input("CLICK 192")
 
-        directory = '../data/ebay/sneakers/' + sneaker.replace(" ", "") + '/'
-        if (not os.path.isdir("../data/ebay/sneakers/" + sneaker.replace(" ", "") + '/')):
+        directory = '../data/ebay/'
+        if (not os.path.isdir("../data/ebay/")):
             os.makedirs(directory, exist_ok=True)
 
         #skip to page 
@@ -259,12 +264,12 @@ def traverse_sneaker_list(driver, sneaker_lists):
         while within_tolerance:
             print("Current page: ", page_num)
             if page_url == "":
-                res = get_all_data_on_page(driver)
+                res = get_all_data_on_page(driver, sneaker['gender'])
                 within_tolerance = res[0]
                 trades += res[1]
             else:
                 open_link(driver, page_url,page_wait=PAGE_WAIT)
-                res = get_all_data_on_page(driver)
+                res = get_all_data_on_page(driver, sneaker['gender'])
                 within_tolerance = res[0]
                 trades += res[1]
 
@@ -295,7 +300,7 @@ def traverse_sneaker_list(driver, sneaker_lists):
         outputs = []
         for i, trade in enumerate(trades):
             outputs+=get_shoe_trading_data(driver, sneaker_name, trade)
-        save_dict_to_file(directory, outputs)
+        save_dict_to_file(directory, sneaker['ticker_symbol'], outputs)
 
         
 """
@@ -305,8 +310,8 @@ helper function to save lists of dictionaries to the correct file
 @param page_num: number of the page it was pulled from
 @param page_dicts: list of data-containing dictionaries
 """
-def save_dict_to_file(directory, page_dicts):
-    with open(directory + "results.csv", 'w') as f:
+def save_dict_to_file(directory, ticker, page_dicts):
+    with open(directory + ticker + '.csv', 'w') as f:
         w = csv.DictWriter(f, page_dicts[0].keys())
         w.writeheader()
         w.writerows(page_dicts)
@@ -328,10 +333,9 @@ def open_link(driver, url, page_wait=PAGE_WAIT):
     global num_opened
     num_opened += 1
     if num_opened % THRESHOLD == 0:
-        print("MEET OPENED LINK THRESHOLD. Sleeping for ", THRESHOLD_WAIT,  "seconds...")
         print("Current Time:", datetime.now())
-        time.sleep(THRESHOLD_WAIT)
-
+        print("MEET OPENED LINK THRESHOLD. HIT Enter to Continue")
+        input("hit enter to continue")
     while True:
         # open new tab
         driver.execute_script("window.open();")
@@ -357,13 +361,6 @@ def open_link(driver, url, page_wait=PAGE_WAIT):
             # switch back to previous page
             driver.switch_to.window(driver.window_handles[-1])
 
-def get_sneaker_names():
-    res = requests.get("http://localhost:8080/api/sneakers/")
-    data = res.json()
-    sneakers = []
-    for sneaker in data:
-        sneakers.append(sneaker.get('style_name'))
-    return sneakers
 
 """
 check_for_robot
@@ -386,25 +383,27 @@ Main function
 Calls get_brands to obtain elements
 """
 def main():
-    #profile = webdriver.FirefoxProfile()
-    #profile.set_preference("general.useragent.override"
-    #    , "Mozilla/5.0 (X11; Linux x86_64; rv:38.0) Gecko/20100101 Firefox/38.0")
-    #profile.set_preference("javascript.enabled", True)
-    driver = webdriver.Firefox()
+
+    options = Options()
+    ua = UserAgent()
+    userAgent = ua.random
+    options.add_argument(f'user-agent={userAgent}')
+    driver = webdriver.Chrome(options=options, executable_path='./chromedriver.exe')
     action = ActionChains(driver)
 
-    # url = 'https://stockx.com/adidas-yeezy-boost-350-v2-lundmark-reflective'
-    # driver.get(url)
     url = 'https://ebay.com/'
     driver.get(url)
     print("done waiting\n\n")
-
-    sneaker_names = get_sneaker_names()
+    try:
+        res = requests.get("http://localhost:8080/api/sneakers/")
+        sneakers = res.json()
+    except HTTPError as error:
+        print(error)
+        raise "Failed to get Sneakers Info"
     
-    traverse_sneaker_list(driver, sneaker_names)
+    traverse_sneaker_list(driver, sneakers)
 
     print("All Done!")
-
 out = None
 if __name__ == '__main__':
     out = main()

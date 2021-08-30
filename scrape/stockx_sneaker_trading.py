@@ -7,6 +7,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.chrome.options import Options
+from fake_useragent import UserAgent
 
 import time
 import numpy as np
@@ -18,6 +20,7 @@ from random import randint
 
 import requests
 
+sneakData_backend = "http://localhost:8080/api/sneakers/"
 skip_page = "https://stockx.com/nike/sb?page=2"
 first_category = True # skips to start on a specified page if set to true
 
@@ -37,9 +40,9 @@ ROBOT_PAGE_WAIT = 3600
 
 num_opened = 0
 
-TOLERANCE = 2
+TOLERANCE = 1
 
-CURRENT_DATE = datetime.now() - timedelta(1)
+CURRENT_DATE = datetime.now()
 
 def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
     
@@ -89,8 +92,8 @@ def get_shoe_trading_data(url, driver, directory,page_wait=PAGE_WAIT):
             if len(trade_info) > 0:
                 trade_infos.append(trade_info) #[[],[],[],[],[]]
         for i, trade_info in enumerate(trade_infos):
-            date_obj = datetime.strptime( trade_infos[i][0], "%A, %B %d, %Y")
-            within_tolerance = (CURRENT_DATE - date_obj) <= timedelta(TOLERANCE)
+            date_obj = datetime.strptime(trade_infos[i][0], "%A, %B %d, %Y")
+            within_tolerance = (CURRENT_DATE - date_obj) <= timedelta(days=TOLERANCE)
             if within_tolerance == False:
                 break
 
@@ -153,14 +156,11 @@ def open_link(driver, url, page_wait=PAGE_WAIT):
         # check page for robot deterrent
         if not check_for_robot(driver):
             # return if it's not the robot page
-            new_link_wait = randint(5,20)
+            new_link_wait = randint(1,10)
             print("Open New Link, Wait for ", new_link_wait, " seconds")
             time.sleep(new_link_wait) # wait for a little bit so as to not make too many requests
             return
         else:
-            #print("Detected robot page, waiting ", ROBOT_PAGE_WAIT, "seconds...")
-            #time.sleep(ROBOT_PAGE_WAIT)
-
             input("hit enter to restart")
             # close tab
             driver.close()
@@ -177,16 +177,20 @@ def check_for_robot(driver):
     except NoSuchElementException as e:
         return False
 
-def main():
-    driver = webdriver.Firefox()
-    # driver = webdriver.Chrome('./chromedriver.exe')
-    driver = webdriver.Edge('./msedgedriver.exe')
-    driver.maximize_window()
+def get_all_sneaker_link():
+    links = []
+    res = requests.get(url=sneakData_backend)
+    for r in res.json():
+        links.append(r['url'])
+    return links
 
-    action = ActionChains(driver)
-    
-    # url = 'https://stockx.com/adidas-yeezy-boost-350-v2-lundmark-reflective'
-    # driver.get(url)
+def main():
+    options = Options()
+    ua = UserAgent()
+    userAgent = ua.random
+    options.add_argument(f'user-agent={userAgent}')
+    driver = webdriver.Chrome(options=options, executable_path='./chromedriver.exe')
+    driver.maximize_window()
 
     url = 'https://stockx.com/'
     driver.get(url)
@@ -194,30 +198,17 @@ def main():
     print("Username: jinzhou66@yahoo.com")
     print("Password: jJ8254164!")
     input("hit enter after login")
+    trading_directory = "../data/stockX/trade/"
+    if (not os.path.isdir("../data/stockX/trade/")):
+        # create the desired directory
+        os.makedirs(trading_directory, exist_ok=True)
+    links = get_all_sneaker_link()
+    for index, link in enumerate(links):
+        print("Sneaker:", index)
+        output = get_shoe_trading_data(link, driver, trading_directory)
+        pprint(output)
+    print("All Done")
 
-    print("done waiting\n\n")
-    brands = get_brands(driver)
-
-    # delete adidas
-    del brands[0]
-
-    for brand_element in brands:
-        browse_sneakers_dropdown(driver)
-        print(brand_element.text)
-        # hover over brand menu element
-        action.move_to_element(brand_element).perform()
-        print("hovering on ",brand_element.text)
-        time.sleep(1)
-
-        #generate list of models/categories
-        brand_categories = driver.find_elements_by_xpath("//ul[contains(@class, 'category-level-3')]")
-
-        # cleans out fake/empty links that wouldn't be accessible to normal users
-        brand_categories = [x for x in brand_categories if x.text.strip() != '']
-
-        traverse_model_category_list(brand_categories, driver)
-
-        print("All Done!")
 
 out = None
 if __name__ == '__main__':

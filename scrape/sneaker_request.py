@@ -3,7 +3,7 @@ from pprint import pprint
 import os
 import csv
 
-SNEAKER_URL  = "https://stockx.com/api/browse?_tags=TAG_PLACEHOLDER&productCategory=sneakers&sort=most-active&order=DESC"
+SNEAKER_URL  = "https://stockx.com/api/browse?_tags=TAG_PLACEHOLDER&productCategory=sneakers&gender=men&sort=most-active&order=DESC"
 HISTORICAL_TRADE_URL = "https://stockx.com/api/rest/v2/products/PRODUCT_UUID_PLACEHOLDER/activity?state=480&currency=USD&sort=createdAt&order=DESC"
 HEADERS = {
     "Host": "stockx.com",
@@ -32,7 +32,7 @@ def fetch_most_popular_sneakers():
             if model == 'one' or model=='yeezy' or model=='nike%20basketball':
                 tag_pages.append({
                     'tag': model+','+brand_name,
-                    'page': 3
+                    'page': 0
                 })
             else:
                 tag_pages.append({

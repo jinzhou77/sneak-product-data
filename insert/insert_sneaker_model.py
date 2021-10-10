@@ -11,52 +11,52 @@ def post_all_sneakers():
     success = 0
     df = pd.read_csv('../data/sneakers/result.csv', encoding = "ISO-8859-1")
     for i, row in enumerate(df.itertuples()):
-        productId = row.id
+        product_id = row.id
         brand = row.brand
         category = row.category
         shoe = row.shoe
         colorway = row.colorway
         gender = row.gender
-        imageUrl = row.imageUrl
-        thumbUrl = row.thumbUrl
-        releaseDate = row.releaseDate
-        belowRetail = row.belowRetail
-        retailPrice = row.retailPrice
-        styleId = row.styleId
-        tickerSymbol = row.tickerSymbol
-        urlKey = row.urlKey
+        image_url = row.imageUrl
+        thumb_url = row.thumbUrl
+        release_date = row.releaseDate
+        below_retail = row.belowRetail
+        retail_price = row.retailPrice
+        style_id = row.styleId
+        ticker_symbol = row.tickerSymbol
+        url_key = row.urlKey
         title = row.title
-        marketAnnualHigh = row.marketAnnualHigh
-        marketAnnualLow = row.marketAnnualLow
-        marketSalesLast72Hours = row.marketSalesLast72Hours
-        marketLowestAsk = row.marketLowestAsk
-        marketLowestAskSize = row.marketLowestAskSize
-        marketHighestBid = row.marketHighestBid
-        marketHighestBidSize = row.marketHighestBidSize
+        market_annual_high = row.marketAnnualHigh
+        market_annual_low = row.marketAnnualLow
+        market_sales_last_72hours = row.marketSalesLast72Hours
+        market_lowest_ask = row.marketLowestAsk
+        market_lowest_ask_size = row.marketLowestAskSize
+        market_highest_bid = row.marketHighestBid
+        market_highest_bid_size = row.marketHighestBidSize
 
         payload = {
-            'productId': productId,
+            'product_id': product_id,
             'brand':brand,
             'category':category,
             'shoe':shoe,
             'colorway':colorway,
             'gender':gender,
-            'imageUrl':imageUrl,
-            'thumbUrl':thumbUrl,
-            'releaseDate':releaseDate,
-            'belowRetail':belowRetail,
-            'retailPrice':float(retailPrice),
-            'styleId':styleId,
-            'tickerSymbol':tickerSymbol,
-            'urlKey':urlKey,
+            'image_url':image_url,
+            'thumb_url':thumb_url,
+            'release_date':release_date,
+            'below_retail':below_retail,
+            'retail_price':float(retail_price),
+            'style_id':style_id,
+            'ticker_symbol':ticker_symbol,
+            'url_key':url_key,
             'title':title,
-            'marketAnnualHigh':float(marketAnnualHigh), 
-            'marketAnnualLow':float(marketAnnualLow), 
-            'marketSalesLast72Hours':marketSalesLast72Hours,
-            'marketLowestAsk':float(marketLowestAsk), 
-            'marketLowestAskSize':marketLowestAskSize,
-            'marketHighestBid':float(marketHighestBid), 
-            'marketHighestBidSize':marketHighestBidSize
+            'market_annual_high':float(market_annual_high), 
+            'market_annual_low':float(market_annual_low), 
+            'market_sales_last_72hours':market_sales_last_72hours,
+            'market_lowest_ask':float(market_lowest_ask), 
+            'market_lowest_ask_size':market_lowest_ask_size,
+            'market_highest_bid':float(market_highest_bid), 
+            'market_highest_bid_size':market_highest_bid_size
         }
         
         res = requests.post(url=sneaker_detail_url, data = payload)
